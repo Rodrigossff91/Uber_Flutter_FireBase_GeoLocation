@@ -64,6 +64,8 @@ class _CadastroState extends State<Cadastro> {
 
      auth.createUserWithEmailAndPassword(email: usuario.email, password: usuario.senha)
      .then((firebaseUser)  {
+
+       
  
      db.collection("usuarios")
      .document(firebaseUser.user.uid)
@@ -87,7 +89,9 @@ class _CadastroState extends State<Cadastro> {
       
      }
 
-     });
+     }).catchError((error){
+  _mensagemErro = "Erro ao autenticar usuario, verifique e-mail e senha, tente novamente" ;
+   });
 
    }
 
