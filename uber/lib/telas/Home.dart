@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import '../model/Usuario.dart';
+import 'package:uber/model/Usuario.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 
 class Home extends StatefulWidget {
   @override
@@ -17,99 +15,102 @@ class _HomeState extends State<Home> {
   String _mensagemErro = "";
   bool _carregando = false;
 
-   _validarCampos(){
+  _validarCampos(){
+
+    //Recuperar dados dos campos
     String email = _controllerEmail.text;
     String senha = _controllerSenha.text;
 
-   if(email.isNotEmpty && email.contains("@")){
+    //validar campos
+    if( email.isNotEmpty && email.contains("@") ){
 
-       if(senha.isNotEmpty && senha.length > 6){
+      if( senha.isNotEmpty && senha.length > 6 ){
 
-         Usuario usuario = Usuario();
-         usuario.email = email;
-         usuario.senha = senha;
+        Usuario usuario = Usuario();
+        usuario.email = email;
+        usuario.senha = senha;
 
+        _logarUsuario( usuario );
 
-         _logarUsuario(usuario);
+      }else{
+        setState(() {
+          _mensagemErro = "Preencha a senha! digite mais de 6 caracteres";
+        });
+      }
 
-       }else{
-         setState(() {
-            _mensagemErro = "Preencha a senha! digite mais de 6 caracteres";
-         });
-       }
+    }else{
+      setState(() {
+        _mensagemErro = "Preencha o E-mail válido";
+      });
+    }
 
+  }
 
-     }else{
-       setState(() {
-       _mensagemErro = "Preencha o E-mail válido";
-     });
-   }
+  _logarUsuario( Usuario usuario ){
 
-   }
-_logarUsuario( Usuario usuario){
+    setState(() {
+      _carregando = true;
+    });
 
-  setState(() {
-    _carregando = true;
-  });
+    FirebaseAuth auth = FirebaseAuth.instance;
 
-   FirebaseAuth auth = FirebaseAuth.instance;
+    auth.signInWithEmailAndPassword(
+        email: usuario.email,
+        password: usuario.senha
+    ).then((firebaseUser){
 
-   auth.signInWithEmailAndPassword(
-  email: usuario.email, 
-  password: usuario.senha
-  ).then((firebaseUser){
-    _redirecionaPainelPorTipoUsuario(firebaseUser.user.uid);
-   }).catchError((error){
-  _mensagemErro = "Erro ao autenticar usuario, verifique e-mail e senha, tente novamente" ;
-   });
-}
+      _redirecionaPainelPorTipoUsuario( firebaseUser.user.uid );
 
-_redirecionaPainelPorTipoUsuario( String idUsuario)async{
-  Firestore db = Firestore.instance;
+    }).catchError((error){
+      _mensagemErro = "Erro ao autenticar usuário, verifique e-mail e senha e tente novamente!";
+    });
 
-   DocumentSnapshot snapshot = await db.collection("usuarios")
-   .document( idUsuario).get();
+  }
 
-   Map<String, dynamic>  dados = snapshot.data;
+  _redirecionaPainelPorTipoUsuario(String idUsuario) async {
 
-   String tipoUsuario = dados["tipoUsuario"];
+    Firestore db = Firestore.instance;
 
-     setState(() {
-    _carregando = false;
-  });
+    DocumentSnapshot snapshot = await db.collection("usuarios")
+          .document( idUsuario )
+          .get();
 
-   switch(tipoUsuario){
-     case "motorista" :
-      Navigator.pushReplacementNamed(context, "/painel-motorista");
-     break;
-     case "passageiro" :
-      Navigator.pushReplacementNamed(context, "/painel-passageiro");
-     break;
+    Map<String, dynamic> dados = snapshot.data;
+    String tipoUsuario = dados["tipoUsuario"];
 
-   }
+    setState(() {
+      _carregando = false;
+    });
 
-}
+    switch( tipoUsuario ){
+      case "motorista" :
+        Navigator.pushReplacementNamed(context, "/painel-motorista");
+        break;
+      case "passageiro" :
+        Navigator.pushReplacementNamed(context, "/painel-passageiro");
+        break;
+    }
 
-_verificaUsuarioLogado()async{
+  }
 
-FirebaseAuth auth  = FirebaseAuth.instance;
+  _verificarUsuarioLogado() async {
 
-FirebaseUser usuarioLogado = await auth.currentUser();
+    FirebaseAuth auth = FirebaseAuth.instance;
 
-if(usuarioLogado != null){
-  String idUsuario = usuarioLogado.uid;
-  _redirecionaPainelPorTipoUsuario(idUsuario);
-}
+    FirebaseUser usuarioLogado = await auth.currentUser();
+    if( usuarioLogado != null ){
+      String idUsuario = usuarioLogado.uid;
+      _redirecionaPainelPorTipoUsuario(idUsuario);
+    }
 
-}
+  }
 
-@override
-void iniState(){
-  super.initState();
-   _verificaUsuarioLogado();
-}
-     
+  @override
+  void initState() {
+    super.initState();
+    _verificarUsuarioLogado();
 
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,17 +187,18 @@ void iniState(){
                       style: TextStyle(color: Colors.white),
                     ),
                     onTap: (){
-                    Navigator.popAndPushNamed(context, "/cadastro");
+                      Navigator.pushNamed(context, "/cadastro");
                     },
                   ),
                 ),
-                _carregando ? Center(child: CircularProgressIndicator(backgroundColor: Colors.white,),)
-                : Container(),
+                _carregando
+                    ? Center(child: CircularProgressIndicator(backgroundColor: Colors.white,),)
+                    : Container(),
                 Padding(
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
                     child: Text(
-                        _mensagemErro,
+                      _mensagemErro,
                       style: TextStyle(color: Colors.red, fontSize: 20),
                     ),
                   ),

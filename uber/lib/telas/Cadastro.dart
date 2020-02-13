@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uber/model/Usuario.dart';
-import "package:firebase_auth/firebase_auth.dart";
-import "package:cloud_firestore/cloud_firestore.dart";
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Cadastro extends StatefulWidget {
   @override
@@ -17,89 +17,85 @@ class _CadastroState extends State<Cadastro> {
   String _mensagemErro = "";
 
   _validarCampos(){
+
+    //Recuperar dados dos campos
     String nome = _controllerNome.text;
     String email = _controllerEmail.text;
     String senha = _controllerSenha.text;
 
-   if(nome.isNotEmpty){
+    //validar campos
+    if( nome.isNotEmpty ){
 
-     if(email.isNotEmpty && email.contains("@")){
+      if( email.isNotEmpty && email.contains("@") ){
 
-       if(senha.isNotEmpty && senha.length > 6){
+        if( senha.isNotEmpty && senha.length > 6 ){
 
-         Usuario usuario = Usuario();
-         usuario.nome = nome;
-         usuario.email = email;
-         usuario.senha = senha;
-         usuario.tipoUsuario = usuario.verificaTipoUsuario(_tipoUsuario);
+          Usuario usuario = Usuario();
+          usuario.nome = nome;
+          usuario.email = email;
+          usuario.senha = senha;
+          usuario.tipoUsuario = usuario.verificaTipoUsuario(_tipoUsuario);
 
-         _cadastrarUsuario(usuario);
+          _cadastrarUsuario( usuario );
 
-       }else{
-         setState(() {
+        }else{
+          setState(() {
             _mensagemErro = "Preencha a senha! digite mais de 6 caracteres";
-         });
-       }
+          });
+        }
 
+      }else{
+        setState(() {
+          _mensagemErro = "Preencha o E-mail válido";
+        });
+      }
 
-     }else{
-       setState(() {
-       _mensagemErro = "Preencha o E-mail válido";
-     });
+    }else{
+      setState(() {
+        _mensagemErro = "Preencha o Nome";
+      });
+    }
 
-     }
-
-   }else{
-     setState(() {
-       _mensagemErro = "Preencha o nome";
-     });
-   }
   }
 
+  _cadastrarUsuario( Usuario usuario ){
 
-   _cadastrarUsuario(Usuario usuario){
+    FirebaseAuth auth = FirebaseAuth.instance;
+    Firestore db = Firestore.instance;
 
-     FirebaseAuth auth = FirebaseAuth.instance;
-     Firestore db = Firestore.instance;
+    auth.createUserWithEmailAndPassword(
+        email: usuario.email,
+        password: usuario.senha
+    ).then((firebaseUser){
 
-     auth.createUserWithEmailAndPassword(email: usuario.email, password: usuario.senha)
-     .then((firebaseUser)  {
+      db.collection("usuarios")
+          .document( firebaseUser.user.uid )
+          .setData( usuario.toMap() );
 
-       
- 
-     db.collection("usuarios")
-     .document(firebaseUser.user.uid)
-     .setData(usuario.toMap());
-     
+      //redireciona para o painel, de acordo com o tipoUsuario
+      switch( usuario.tipoUsuario ){
+        case "motorista" :
+          Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/painel-motorista",
+              (_) => false
+          );
+          break;
+        case "passageiro" :
+          Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/painel-passageiro",
+                  (_) => false
+          );
+          break;
+      }
 
-     switch (usuario.tipoUsuario) {
-       case "motorista" : Navigator.pushNamedAndRemoveUntil(context , "/painel-motorista", (_) => false);
-      
-         
-         break;
-      
-     }
-     
+    }).catchError((error){
+      _mensagemErro = "Erro ao cadastrar usuário, verifique os campos e tente novamente!";
+    });
 
-        switch (usuario.tipoUsuario) {
-       case "passageiro" : Navigator.pushNamedAndRemoveUntil(context , "/painel-passageiro", (_) => false);
-      
-         
-         break;
-      
-     }
+  }
 
-     }).catchError((error){
-  _mensagemErro = "Erro ao autenticar usuario, verifique e-mail e senha, tente novamente" ;
-   });
-
-   }
-
-  
-
-
- 
- 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,7 +180,7 @@ class _CadastroState extends State<Cadastro> {
                       color: Color(0xff1ebbd8),
                       padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
                       onPressed: (){
-                  _validarCampos();
+                        _validarCampos();
                       }
                   ),
                 ),

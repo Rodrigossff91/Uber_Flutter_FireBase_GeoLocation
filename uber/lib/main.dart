@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:uber/rotas.dart';
 import 'package:uber/telas/Home.dart';
+
+import 'Rotas.dart';
 
 final ThemeData temaPadrao = ThemeData(
   primaryColor: Color(0xff37474f),
