@@ -116,6 +116,7 @@ class _PainelMotoristaState extends State<PainelMotorista> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.red,
         title: Text("Painel motorista"),
         actions: <Widget>[
           PopupMenuButton<String>(

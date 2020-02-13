@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:uber/model/Usuario.dart';
 import 'package:uber/util/StatusRequisicao.dart';
 import 'package:uber/util/UsuarioFirebase.dart';
@@ -26,13 +27,17 @@ class _CorridaState extends State<Corrida> {
   CameraPosition _posicaoCamera =
   CameraPosition(target: LatLng(-23.563999, -46.653256));
   Set<Marker> _marcadores = {};
+  Set<Polyline> _routes = {};
   Map<String, dynamic> _dadosRequisicao;
+  String _idRequisicao;
   Position _localMotorista;
+  String _statusRequisicao = StatusRequisicao.AGUARDANDO;
 
   //Controles para exibição na tela
   String _textoBotao = "Aceitar corrida";
   Color _corBotao = Color(0xff1ebbd8);
   Function _funcaoBotao;
+  String _mensagemStatus = "";
 
   _alterarBotaoPrincipal(String texto, Color cor, Function funcao) {
     setState(() {
@@ -52,16 +57,30 @@ class _CorridaState extends State<Corrida> {
     LocationOptions(accuracy: LocationAccuracy.high, distanceFilter: 10);
 
     geolocator.getPositionStream(locationOptions).listen((Position position) {
-      _exibirMarcadorPassageiro(position);
 
-      _posicaoCamera = CameraPosition(
-          target: LatLng(position.latitude, position.longitude), zoom: 19);
+      if( position != null ){
 
-      _movimentarCamera(_posicaoCamera);
+        if( _idRequisicao != null && _idRequisicao.isNotEmpty ){
 
-      setState(() {
-        _localMotorista = position;
-      });
+          if( _statusRequisicao != StatusRequisicao.AGUARDANDO ){
+
+            //Atualiza local do passageiro
+            UsuarioFirebase.atualizarDadosLocalizacao(
+                _idRequisicao,
+                position.latitude,
+                position.longitude
+            );
+
+          }else{//aguardando
+            setState(() {
+              _localMotorista = position;
+            });
+            _statusAguardando();
+          }
+
+        }
+
+      }
 
     });
   }
@@ -70,17 +89,13 @@ class _CorridaState extends State<Corrida> {
     Position position = await Geolocator()
         .getLastKnownPosition(desiredAccuracy: LocationAccuracy.high);
 
-    setState(() {
-      if (position != null) {
-        _exibirMarcadorPassageiro(position);
+    if (position != null) {
 
-        _posicaoCamera = CameraPosition(
-            target: LatLng(position.latitude, position.longitude), zoom: 19);
+      //Atualizar localização em tempo real do motorista
 
-        _movimentarCamera(_posicaoCamera);
-        _localMotorista = position;
-      }
-    });
+
+    }
+
   }
 
   _movimentarCamera(CameraPosition cameraPosition) async {
@@ -89,22 +104,22 @@ class _CorridaState extends State<Corrida> {
         .animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
   }
 
-  _exibirMarcadorPassageiro(Position local) async {
+  _exibirMarcador(Position local, String icone, String infoWindow) async {
 
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     BitmapDescriptor.fromAssetImage(
         ImageConfiguration(devicePixelRatio: pixelRatio),
-        "imagens/motorista.png")
-        .then((BitmapDescriptor icone) {
-      Marker marcadorPassageiro = Marker(
-          markerId: MarkerId("marcador-motorista"),
+        icone)
+        .then((BitmapDescriptor bitmapDescriptor) {
+      Marker marcador = Marker(
+          markerId: MarkerId(icone),
           position: LatLng(local.latitude, local.longitude),
-          infoWindow: InfoWindow(title: "Meu local"),
-          icon: icone);
+          infoWindow: InfoWindow(title: infoWindow),
+          icon: bitmapDescriptor);
 
       setState(() {
-        _marcadores.add(marcadorPassageiro);
+        _marcadores.add(marcador);
       });
     });
 
@@ -121,24 +136,26 @@ class _CorridaState extends State<Corrida> {
         .document( idRequisicao )
         .get();
 
-    _dadosRequisicao = documentSnapshot.data;
-    _adicionarListenerRequisicao();
+
+
 
   }
 
   _adicionarListenerRequisicao() async {
 
     Firestore db = Firestore.instance;
-    String idRequisicao = _dadosRequisicao["id"];
+
     await db.collection("requisicoes")
-    .document( idRequisicao ).snapshots().listen((snapshot){
+    .document( _idRequisicao ).snapshots().listen((snapshot){
 
       if( snapshot.data != null ){
 
-        Map<String, dynamic> dados = snapshot.data;
-        String status = dados["status"];
+        _dadosRequisicao = snapshot.data;
 
-        switch( status ){
+        Map<String, dynamic> dados = snapshot.data;
+        _statusRequisicao = dados["status"];
+
+        switch( _statusRequisicao ){
           case StatusRequisicao.AGUARDANDO :
             _statusAguardando();
             break;
@@ -146,10 +163,13 @@ class _CorridaState extends State<Corrida> {
             _statusACaminho();
             break;
           case StatusRequisicao.VIAGEM :
-
+            _statusEmViagem();
             break;
           case StatusRequisicao.FINALIZADA :
-
+            _statusFinalizada();
+            break;
+          case StatusRequisicao.CONFIRMADA :
+            _statusConfirmada();
             break;
 
         }
@@ -168,15 +188,41 @@ class _CorridaState extends State<Corrida> {
             () {
           _aceitarCorrida();
         });
+
+    if( _localMotorista != null ){
+
+      double motoristaLat = _localMotorista.latitude;
+      double motoristaLon = _localMotorista.longitude;
+
+      Position position = Position(
+          latitude: motoristaLat, longitude: motoristaLon
+      );
+      _exibirMarcador(
+          position,
+          "imagens/motorista.png",
+          "Motorista"
+      );
+
+      CameraPosition cameraPosition = CameraPosition(
+          target: LatLng(position.latitude, position.longitude), zoom: 19);
+
+      _movimentarCamera( cameraPosition );
+
+    }
+
   }
 
   _statusACaminho() {
 
+    _mensagemStatus = "A caminho do passageiro";
     _alterarBotaoPrincipal(
-        "A caminho do passageiro",
-        Colors.grey,
-        null
+        "Iniciar corrida",
+        Color(0xff1ebbd8),
+        (){
+          _iniciarCorrida();
+        }
     );
+
 
     double latitudePassageiro = _dadosRequisicao["passageiro"]["latitude"];
     double longitudePassageiro = _dadosRequisicao["passageiro"]["longitude"];
@@ -184,9 +230,227 @@ class _CorridaState extends State<Corrida> {
     double latitudeMotorista = _dadosRequisicao["motorista"]["latitude"];
     double longitudeMotorista = _dadosRequisicao["motorista"]["longitude"];
 
+    //Exibir dois marcadores
     _exibirDoisMarcadores(
       LatLng(latitudeMotorista, longitudeMotorista),
       LatLng(latitudePassageiro, longitudePassageiro)
+    );
+
+    //'southwest.latitude <= northeast.latitude': is not true
+    var nLat, nLon, sLat, sLon;
+
+    if( latitudeMotorista <=  latitudePassageiro ){
+      sLat = latitudeMotorista;
+      nLat = latitudePassageiro;
+    }else{
+      sLat = latitudePassageiro;
+      nLat = latitudeMotorista;
+    }
+
+    if( longitudeMotorista <=  longitudePassageiro ){
+      sLon = longitudeMotorista;
+      nLon = longitudePassageiro;
+    }else{
+      sLon = longitudePassageiro;
+      nLon = longitudeMotorista;
+    }
+    //-23.560925, -46.650623
+    _movimentarCameraBounds(
+      LatLngBounds(
+          northeast: LatLng(nLat, nLon), //nordeste
+          southwest: LatLng(sLat, sLon) //sudoeste
+      )
+    );
+
+  }
+
+  _finalizarCorrida(){
+
+    Firestore db = Firestore.instance;
+    db.collection("requisicoes")
+    .document( _idRequisicao )
+    .updateData({
+      "status" : StatusRequisicao.FINALIZADA
+    });
+
+
+    String idPassageiro = _dadosRequisicao["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa")
+        .document( idPassageiro )
+        .updateData({"status": StatusRequisicao.FINALIZADA });
+
+    String idMotorista = _dadosRequisicao["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista")
+        .document( idMotorista )
+        .updateData({"status": StatusRequisicao.FINALIZADA });
+
+  }
+
+  _statusFinalizada() async {
+
+    //Calcula valor da corrida
+    double latitudeDestino = _dadosRequisicao["destino"]["latitude"];
+    double longitudeDestino = _dadosRequisicao["destino"]["longitude"];
+
+    double latitudeOrigem = _dadosRequisicao["origem"]["latitude"];
+    double longitudeOrigem = _dadosRequisicao["origem"]["longitude"];
+
+    double distanciaEmMetros = await Geolocator().distanceBetween(
+        latitudeOrigem,
+        longitudeOrigem,
+        latitudeDestino,
+        longitudeDestino
+    );
+
+    //Converte para KM
+    double distanciaKm = distanciaEmMetros / 1000;
+
+    //8 é o valor cobrado por KM
+    double valorViagem = distanciaKm * 8;
+
+    //Formatar valor viagem
+    var f = new NumberFormat("#,##0.00", "pt_BR");
+    var valorViagemFormatado = f.format( valorViagem );
+
+    _mensagemStatus = "Viagem finalizada";
+    _alterarBotaoPrincipal(
+        "Confirmar - R\$ ${valorViagemFormatado}",
+        Color(0xff1ebbd8),
+            (){
+          _confirmarCorrida();
+        }
+    );
+
+    _marcadores = {};
+    Position position = Position(
+        latitude: latitudeDestino, longitude: longitudeDestino
+    );
+    _exibirMarcador(
+        position,
+        "imagens/destino.png",
+        "Destino"
+    );
+
+    CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude), zoom: 19);
+
+    _movimentarCamera( cameraPosition );
+
+  }
+
+  _statusConfirmada(){
+
+    Navigator.pushReplacementNamed(context, "/painel-motorista");
+
+  }
+
+  _confirmarCorrida(){
+
+    Firestore db = Firestore.instance;
+    db.collection("requisicoes")
+        .document( _idRequisicao )
+        .updateData({
+      "status" : StatusRequisicao.CONFIRMADA
+    });
+
+    String idPassageiro = _dadosRequisicao["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa")
+        .document( idPassageiro )
+        .delete();
+
+    String idMotorista = _dadosRequisicao["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista")
+        .document( idMotorista )
+        .delete();
+
+  }
+
+  _statusEmViagem() {
+
+    _mensagemStatus = "Em viagem";
+    _alterarBotaoPrincipal(
+        "Finalizar corrida",
+        Color(0xff1ebbd8),
+            (){
+          _finalizarCorrida();
+        }
+    );
+
+
+    double latitudeDestino = _dadosRequisicao["destino"]["latitude"];
+    double longitudeDestino = _dadosRequisicao["destino"]["longitude"];
+
+    double latitudeOrigem = _dadosRequisicao["motorista"]["latitude"];
+    double longitudeOrigem = _dadosRequisicao["motorista"]["longitude"];
+
+    //Exibir dois marcadores
+    _exibirDoisMarcadores(
+        LatLng(latitudeOrigem, longitudeOrigem),
+        LatLng(latitudeDestino, longitudeDestino)
+    );
+
+    //'southwest.latitude <= northeast.latitude': is not true
+    var nLat, nLon, sLat, sLon;
+
+    if( latitudeOrigem <=  latitudeDestino ){
+      sLat = latitudeOrigem;
+      nLat = latitudeDestino;
+    }else{
+      sLat = latitudeDestino;
+      nLat = latitudeOrigem;
+    }
+
+    if( longitudeOrigem <=  longitudeDestino ){
+      sLon = longitudeOrigem;
+      nLon = longitudeDestino;
+    }else{
+      sLon = longitudeDestino;
+      nLon = longitudeOrigem;
+    }
+    //-23.560925, -46.650623
+    _movimentarCameraBounds(
+        LatLngBounds(
+            northeast: LatLng(nLat, nLon), //nordeste
+            southwest: LatLng(sLat, sLon) //sudoeste
+        )
+    );
+
+  }
+
+  _iniciarCorrida(){
+
+    Firestore db = Firestore.instance;
+    db.collection("requisicoes")
+    .document( _idRequisicao )
+    .updateData({
+      "origem" : {
+        "latitude" : _dadosRequisicao["motorista"]["latitude"],
+        "longitude" : _dadosRequisicao["motorista"]["longitude"]
+      },
+      "status" : StatusRequisicao.VIAGEM
+    });
+
+    String idPassageiro = _dadosRequisicao["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa")
+    .document( idPassageiro )
+    .updateData({"status": StatusRequisicao.VIAGEM });
+
+    String idMotorista = _dadosRequisicao["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista")
+        .document( idMotorista )
+        .updateData({"status": StatusRequisicao.VIAGEM });
+
+  }
+
+  _movimentarCameraBounds(LatLngBounds latLngBounds) async {
+
+    GoogleMapController googleMapController = await _controller.future;
+    googleMapController
+        .animateCamera(
+      CameraUpdate.newLatLngBounds(
+          latLngBounds,
+          100
+      )
     );
 
   }
@@ -222,10 +486,6 @@ class _CorridaState extends State<Corrida> {
 
     setState(() {
       _marcadores = _listaMarcadores;
-      _movimentarCamera(CameraPosition(
-          target: LatLng(latLngMotorista.latitude, latLngMotorista.longitude),
-        zoom: 18
-      ));
     });
 
   }
@@ -269,16 +529,45 @@ class _CorridaState extends State<Corrida> {
 
   }
 
+  _carregarPolyLine()async{
+  Usuario motorista   = await UsuarioFirebase.getDadosUsuarioLogado();
+  Set<Polyline> listaPolyLines = {};
+  Polyline polyline = Polyline(
+    polylineId: PolylineId("Polyline"),
+    color: Colors.black,
+    width: 5,
+    // CONFIGURAÇAO DA LINHA 
+    startCap: Cap.roundCap,
+    endCap: Cap.roundCap ,
+    jointType: JointType.mitered,
+    points: [
+      LatLng(-21.160991, -47.817244),
+      LatLng(-21.188550, -47.797645),
+      LatLng(-21.191271, -47.797506),
+      LatLng(-21.189118, -47.792620)
+
+    ],
+     // DEFINIR AÇAO SOBRE ROTA 
+    consumeTapEvents: true,
+   onTap: (){
+   print("Ir para Rua mato grosso 219");
+   }
+
+  );
+  }
+
   @override
   void initState() {
     super.initState();
 
-    _recuperaUltimaLocalizacaoConhecida();
-    _adicionarListenerLocalizacao();
+    _idRequisicao = widget.idRequisicao;
+    _carregarPolyLine();
 
-    //Recuperar requisicao e
-    // adicionar listener para mudança de status
-    _recuperarRequisicao();
+    // adicionar listener para mudanças na requisicao
+    _adicionarListenerRequisicao();
+
+    //_recuperaUltimaLocalizacaoConhecida();
+    _adicionarListenerLocalizacao();
 
   }
 
@@ -286,7 +575,7 @@ class _CorridaState extends State<Corrida> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Painel corrida"),
+        title: Text("Painel corrida - " + _mensagemStatus ),
       ),
       body: Container(
         child: Stack(

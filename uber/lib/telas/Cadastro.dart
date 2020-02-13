@@ -10,9 +10,9 @@ class Cadastro extends StatefulWidget {
 
 class _CadastroState extends State<Cadastro> {
 
-  TextEditingController _controllerNome = TextEditingController();
-  TextEditingController _controllerEmail = TextEditingController();
-  TextEditingController _controllerSenha = TextEditingController();
+  TextEditingController _controllerNome = TextEditingController(text: "Jamilton Damasceno");
+  TextEditingController _controllerEmail = TextEditingController(text: "jamilton@gmail.com");
+  TextEditingController _controllerSenha = TextEditingController(text: "1234567");
   bool _tipoUsuario = false;
   String _mensagemErro = "";
 
@@ -100,6 +100,7 @@ class _CadastroState extends State<Cadastro> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.red,
         title: Text("Cadastro"),
       ),
       body: Container(
