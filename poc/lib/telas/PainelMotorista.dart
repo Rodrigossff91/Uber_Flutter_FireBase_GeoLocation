@@ -98,7 +98,7 @@ class _PainelMotoristaState extends State<PainelMotorista> {
     var mensagemCarregando = Center(
       child: Column(
         children: <Widget>[
-          Text("Carregando requisições"),
+          Text("Carregando Entregas"),
           CircularProgressIndicator()
         ],
       ),
@@ -106,7 +106,7 @@ class _PainelMotoristaState extends State<PainelMotorista> {
 
     var mensagemNaoTemDados = Center(
       child: Text(
-        "Você não tem nenhuma requisição :( ",
+        "Você não tem nenhuma Entrega",
         style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold
@@ -117,7 +117,7 @@ class _PainelMotoristaState extends State<PainelMotorista> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red,
-        title: Text("Painel motorista"),
+        title: Text("Painel Entregador"),
         actions: <Widget>[
           PopupMenuButton<String>(
             onSelected: _escolhaMenuItem,

@@ -33,8 +33,8 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   //Controles para exibição na tela
   bool _exibirCaixaEnderecoDestino = true;
-  String _textoBotao = "Chamar uber";
-  Color _corBotao = Color(0xff1ebbd8);
+  String _textoBotao = "Chamar Entregador";
+  Color _corBotao = Color(0xFFFF0000);
   Function _funcaoBotao;
 
   _deslogarUsuario() async {
@@ -116,7 +116,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             "imagens/passageiro.png")
         .then((BitmapDescriptor icone) {
       Marker marcadorPassageiro = Marker(
-          markerId: MarkerId("marcador-passageiro"),
+          markerId: MarkerId("marcador-restaurante"),
           position: LatLng(local.latitude, local.longitude),
           infoWindow: InfoWindow(title: "Meu local"),
           icon: icone);
@@ -245,7 +245,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
     _exibirCaixaEnderecoDestino = true;
 
-    _alterarBotaoPrincipal("Chamar uber", Color(0xff1ebbd8), () {
+    _alterarBotaoPrincipal("Chamar Motoqueiro", Color(0xFFD81E1E), () {
       _chamarUber();
     });
 
@@ -628,7 +628,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red,
-        title: Text("Painel passageiro"),
+        title: Text("Painel restaurante"),
         actions: <Widget>[
           PopupMenuButton<String>(
             onSelected: _escolhaMenuItem,
@@ -717,7 +717,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
                                   color: Colors.black,
                                 ),
                               ),
-                              hintText: "Digite o destino",
+                              hintText: "Digite o destino da Entrega",
                               border: InputBorder.none,
                               contentPadding:
                                   EdgeInsets.only(left: 15, top: 16)),

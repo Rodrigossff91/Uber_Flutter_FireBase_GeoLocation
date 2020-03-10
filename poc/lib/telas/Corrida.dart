@@ -183,8 +183,8 @@ class _CorridaState extends State<Corrida> {
   _statusAguardando() {
 
     _alterarBotaoPrincipal(
-        "Aceitar corrida",
-        Color(0xff1ebbd8),
+        "Aceitar entrega",
+        Color(0xA6D81E1E),
             () {
           _aceitarCorrida();
         });
@@ -216,8 +216,8 @@ class _CorridaState extends State<Corrida> {
 
     _mensagemStatus = "A caminho do passageiro";
     _alterarBotaoPrincipal(
-        "Iniciar corrida",
-        Color(0xff1ebbd8),
+        "Iniciar entrega",
+        Color(0xFFD81E1E),
         (){
           _iniciarCorrida();
         }
@@ -312,7 +312,7 @@ class _CorridaState extends State<Corrida> {
     var f = new NumberFormat("#,##0.00", "pt_BR");
     var valorViagemFormatado = f.format( valorViagem );
 
-    _mensagemStatus = "Viagem finalizada";
+    _mensagemStatus = "Entrega finalizada";
     _alterarBotaoPrincipal(
         "Confirmar - R\$ ${valorViagemFormatado}",
         Color(0xff1ebbd8),
@@ -467,7 +467,7 @@ class _CorridaState extends State<Corrida> {
       Marker marcador1 = Marker(
           markerId: MarkerId("marcador-motorista"),
           position: LatLng(latLngMotorista.latitude, latLngMotorista.longitude),
-          infoWindow: InfoWindow(title: "Local motorista"),
+          infoWindow: InfoWindow(title: "Local Entregador"),
           icon: icone);
       _listaMarcadores.add( marcador1 );
     });
@@ -479,7 +479,7 @@ class _CorridaState extends State<Corrida> {
       Marker marcador2 = Marker(
           markerId: MarkerId("marcador-passageiro"),
           position: LatLng(latLngPassageiro.latitude, latLngPassageiro.longitude),
-          infoWindow: InfoWindow(title: "Local passageiro"),
+          infoWindow: InfoWindow(title: "Local Restaurante"),
           icon: icone);
       _listaMarcadores.add( marcador2 );
     });

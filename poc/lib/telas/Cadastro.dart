@@ -10,9 +10,9 @@ class Cadastro extends StatefulWidget {
 
 class _CadastroState extends State<Cadastro> {
 
-  TextEditingController _controllerNome = TextEditingController(text: "Jamilton Damasceno");
-  TextEditingController _controllerEmail = TextEditingController(text: "jamilton@gmail.com");
-  TextEditingController _controllerSenha = TextEditingController(text: "1234567");
+  TextEditingController _controllerNome = TextEditingController(text: "");
+  TextEditingController _controllerEmail = TextEditingController(text: "");
+  TextEditingController _controllerSenha = TextEditingController(text: "");
   bool _tipoUsuario = false;
   String _mensagemErro = "";
 
@@ -158,7 +158,7 @@ class _CadastroState extends State<Cadastro> {
                   padding: EdgeInsets.only(bottom: 10),
                   child: Row(
                     children: <Widget>[
-                      Text("Passageiro"),
+                      // Text("Passageiro"),
                       Switch(
                           value: _tipoUsuario,
                           onChanged: (bool valor){
